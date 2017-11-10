@@ -123,20 +123,27 @@ fn print_help_and_exit() -> ! {
     std::process::exit(1);
 }
 
-fn main() {
+fn read_args() -> Vec<String> {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() != 5 {
         print_help_and_exit();
     }
 
+    args
+}
+
+fn save_fractal(args: Vec<String>) {
     let bounds = parse_pair(&args[2], 'x').expect("error parsing bounds");
     let upper_left = parse_complex(&args[3]).expect("error parsing upper left corner");
     let lower_right = parse_complex(&args[4]).expect("error parsing lower right corner");
-
     let mut pixels = vec![0; bounds.0 * bounds.1];
 
     render(&mut pixels, bounds, upper_left, lower_right);
-
     write_image(&args[1], &pixels, bounds).expect("error writing PNG image");
+}
+
+fn main() {
+    let args = read_args();
+    save_fractal(args);
 }
