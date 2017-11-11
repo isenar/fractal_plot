@@ -1,5 +1,7 @@
 extern crate num;
 extern crate image;
+extern crate crossbeam;
+extern crate num_cpus;
 
 use std::str::FromStr;
 use std::fs::File;
@@ -119,7 +121,7 @@ fn write_image(filename: &str, pixels: &[u8], bounds: (usize, usize)) -> Result<
 
 fn print_help_and_exit() -> ! {
     eprintln!("Usage: <file_to_be_saved> <bounds> <upper_left> <lower_right>");
-    eprintln!("Example: cargo run --release -- fractal.png 1000x750 -1.20,0.35 -1,0.20");
+    eprintln!("Example:\ncargo run --release -- fractal.png 1000x750 -1.20,0.35 -1,0.20");
     std::process::exit(1);
 }
 
@@ -138,8 +140,28 @@ fn save_fractal(args: Vec<String>) {
     let upper_left = parse_complex(&args[3]).expect("error parsing upper left corner");
     let lower_right = parse_complex(&args[4]).expect("error parsing lower right corner");
     let mut pixels = vec![0; bounds.0 * bounds.1];
+    let threads = num_cpus::get();
+    let rows_per_band = bounds.1 / threads + 1;
 
-    render(&mut pixels, bounds, upper_left, lower_right);
+    {
+        let bands: Vec<&mut [u8]> = pixels.chunks_mut(rows_per_band * bounds.0).collect();
+        crossbeam::scope(|spawner| {
+            for (i, band) in bands.into_iter().enumerate() {
+                let top = rows_per_band * i;
+                let height = band.len() / bounds.0;
+                let band_bounds = (bounds.0, height);
+                let band_upper_left = pixel_to_point(bounds, (0, top),
+                                                                   upper_left, lower_right);
+                let band_lower_right = pixel_to_point(bounds, (bounds.0, top + height),
+                                                                    upper_left, lower_right);
+
+                spawner.spawn(move || {
+                   render(band,band_bounds, band_upper_left, band_lower_right);
+                });
+            }
+        });
+    }
+
     write_image(&args[1], &pixels, bounds).expect("error writing PNG image");
 }
 

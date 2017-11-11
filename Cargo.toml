@@ -2,8 +2,9 @@
 name = "fractal_plot"
 version = "0.1.0"
 authors = ["Dariusz Dajka"]
-email = "dariusz.dajka@gmail.com"
 
 [dependencies]
 num = "0.1.40"
 image = "0.17.0"
+crossbeam = "0.3.0"
+num_cpus = "1.7.0"
